@@ -1,0 +1,8 @@
+set ML_PATH=C:\programming\ml\Book\projects
+mkdir -p %ML_PATH%
+ .\env\Scripts\activate
+
+
+
+
+jupyter notebook
