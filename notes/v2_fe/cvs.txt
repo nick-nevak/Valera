@@ -1,0 +1,13 @@
+Full dry run
+
+Cross-Validated Mean Absolute Error (MAE): 1447658.2446506515
+Cross-Validated Mean Squared Error (MSE): 7518298333209.33
+Cross-Validated Root Mean Squared Error (RMSE): 2741951.55559126
+Cross-Validated R^2 Score: 0.6709530353546143
+
+f4v2 run 
+
+Cross-Validated Mean Absolute Error (MAE): 1441706.3281070527
+Cross-Validated Mean Squared Error (MSE): 7464300476209.541
+Cross-Validated Root Mean Squared Error (RMSE): 2732087.2014285233
+Cross-Validated R^2 Score: 0.6733163595199585
