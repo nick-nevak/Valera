@@ -1,0 +1,46 @@
+Raw no preprocessing 
+
+Cross-Validated Mean Absolute Error (MAE): 1444349.6006202619
+Cross-Validated Mean Squared Error (MSE): 7503727168241.887
+Cross-Validated Root Mean Squared Error (RMSE): 2739293.187711364
+Cross-Validated R^2 Score: 0.6715908050537109
+Mean Squared Logarithmic Error (MSLE): 0.21480783801084305
+
+Outliers removed
+
+Cross-Validated Mean Absolute Error (MAE): 1237057.474413236
+Cross-Validated Mean Squared Error (MSE): 3800303373068.788
+Cross-Validated Root Mean Squared Error (RMSE): 1949436.6809590887
+Cross-Validated R^2 Score: 0.46948885917663574
+Mean Squared Logarithmic Error (MSLE): 0.21005201220958056
+
+Outliers removed
+& cafe_accessibility_N cafe_affordability_N added
+
+Cross-Validated Mean Absolute Error (MAE): 1240375.2019701633
+Cross-Validated Mean Squared Error (MSE): 3806940221589.318
+Cross-Validated Root Mean Squared Error (RMSE): 1951138.1861850068
+Cross-Validated R^2 Score: 0.46856236457824707
+Mean Squared Logarithmic Error (MSLE): 0.2112280728585601
+
+
+Outliers removed
+& cafe_accessibility_N cafe_affordability_N added
+& sport_count_weighted aggregated
+
+Cross-Validated Mean Absolute Error (MAE): 1232141.2804706355
+Cross-Validated Mean Squared Error (MSE): 3800919395086.472
+Cross-Validated Root Mean Squared Error (RMSE): 1949594.674563529
+Cross-Validated R^2 Score: 0.46940284967422485
+Mean Squared Logarithmic Error (MSLE): 0.21057864006452134
+
+Outliers removed
+& cafe_accessibility_N cafe_affordability_N added
+& sport_count_weighted aggregated
+& proportion_of_perv step fi is counted
+
+Cross-Validated Mean Absolute Error (MAE): 1232829.4924402742
+Cross-Validated Mean Squared Error (MSE): 3803066497218.3765
+Cross-Validated Root Mean Squared Error (RMSE): 1950145.2502873668
+Cross-Validated R^2 Score: 0.4691030979156494
+Mean Squared Logarithmic Error (MSLE): 0.2099412463570696
