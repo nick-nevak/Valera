@@ -1,0 +1,45 @@
+Original 
+
+Cross-Validated RMSE: 1552005.5163638936
+Cross-Validated R^2 Score: 0.6067202091217041
+Cross-Validated LRMSE: 0.29025903513765033
+
+Test RMSE: 1463448.9271401071
+Test R^2 Score: 0.6526361107826233
+Test LRMSE: 0.2639416306529915
+
+Test MSLE: 0.06966518439176016
+
+
+eps=10 min_samples=30
+
+Cross-Validated RMSE: 1536329.795276499
+Cross-Validated R^2 Score: 0.6125417947769165
+Cross-Validated LRMSE: 0.2856177766918437
+
+Test RMSE: 1518246.368834234
+Test R^2 Score: 0.6329621076583862
+Test LRMSE: 0.28392662031146587
+
+Test MSLE: 0.0806143257214913
+
+
+eps=6 min_samples=60
+
+Cross-Validated RMSE: 1529402.7686731406
+Cross-Validated R^2 Score: 0.6206361055374146
+Cross-Validated LRMSE: 0.28439132106925247
+
+Test RMSE: 1495546.7330484365
+Test R^2 Score: 0.6145275831222534
+Test LRMSE: 0.28491409940679985
+
+Test MSLE: 0.08117604404078782
+
+
+
+eps=5 min_samples=70
+X_reduced = np.delete(X_reduced, outlier_indices, axis=0)  # Drop outlier rows
+
+# Assuming y is also a NumPy array, exclude corresponding rows in y
+y = np.delete(y, outlier_indices, axis=0)  # Drop the same rows in target
