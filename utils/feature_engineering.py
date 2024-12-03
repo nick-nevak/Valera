@@ -4,26 +4,183 @@ import pandas as pd
 from utils.constants import date_column
 
 
+import numpy as np
+import pandas as pd
+
+
 def apply_feature_engineering(df, target):
     return (
-        df.pipe(create_accessibility_and_adequacy_features)
-        .pipe(process_and_drop_cafe_price_columns)
-        .pipe(aggregate_affordability_accessibility)
-        .pipe(process_distance_features, feature_distance_weights)
-        .pipe(calculate_weighted_build_count, construction_weights)
-        .pipe(drop_redundant_columns, "build_count", construction_weights)
-        .pipe(calculate_weighted_material_score, material_weights)
-        .pipe(drop_redundant_columns, "build_count", material_weights)
-        .pipe(weighted_average_aggregation, "green_part", green_weights)
-        .pipe(weighted_average_aggregation, "prom_part", prom_weights)
-        .pipe(drop_redundant_columns, "green_part", green_weights)
-        .pipe(drop_redundant_columns, "prom_part", prom_weights)
-        .pipe(process_demographic_features)
+        df
+        # .pipe(create_accessibility_and_adequacy_features)
+        # .pipe(process_and_drop_cafe_price_columns)
+        # .pipe(aggregate_affordability_accessibility)
+        # .pipe(process_distance_features, feature_distance_weights)
+        # .pipe(calculate_weighted_build_count, construction_weights)
+        # .pipe(drop_redundant_columns, "build_count", construction_weights)
+        # .pipe(calculate_weighted_material_score, material_weights)
+        # .pipe(drop_redundant_columns, "build_count", material_weights)
+        # .pipe(weighted_average_aggregation, "green_part", green_weights)
+        # .pipe(weighted_average_aggregation, "prom_part", prom_weights)
+        # .pipe(drop_redundant_columns, "green_part", green_weights)
+        # .pipe(drop_redundant_columns, "prom_part", prom_weights)
+        # .pipe(process_demographic_features)
         # .pipe(improve_top_features, target)
-        .pipe(drop_initial_features)
-        .pipe(drop_testing)
+        # .pipe(fi_experimental)
+        # .pipe(drop_initial_features)
+        # .pipe(drop_testing)
         .pipe(process_timestamp)
+        # .pipe(drop_cafe_columns)
+        # .pipe(drop_weighted_columns)
     )
+
+
+def merge_with_macro(transactions_df, macro_df):
+    columns_to_clean = [
+        "child_on_acc_pre_school",
+        "modern_education_share",
+        "old_education_build_share",
+    ]
+
+    for col in columns_to_clean:
+        macro_df[col] = (
+            macro_df[col]
+            .replace(
+                "#!", None
+            )  # Replace '#!' with None (Python's native missing value)
+            .str.replace(
+                ",", ".", regex=True
+            )  # Replace commas with periods for decimal handling
+            .astype(float)  # Convert to numeric, None is treated as NaN
+        )
+
+    macro_most_important_features = ["timestamp"] + [
+        "cpi",
+        "micex_rgbi_tr",
+        "rent_price_3room_bus",
+        "rent_price_4+room_bus",
+        "rts",
+        "ppi",
+        "rent_price_2room_bus",
+        "mortgage_value",
+        "deposits_rate",
+        "mortgage_rate",
+        "usdrub",
+        "balance_trade",
+        "oil_urals",
+        "brent",
+        "gdp_quart_growth",
+        "average_provision_of_build_contract_moscow",
+        "net_capital_export",
+        "rent_price_1room_bus",
+        "grp",
+        "average_provision_of_build_contract",
+        "deposits_growth",
+        "income_per_cap",
+        "micex",
+        "balance_trade_growth",
+        "eurrub",
+        "rent_price_2room_eco",
+        "rent_price_1room_eco",
+        "gdp_quart",
+        "mortgage_growth",
+        "micex_cbi_tr",
+        "real_dispos_income_per_cap_growth",
+        "grp_growth",
+    ]
+    macro_df = macro_df[macro_most_important_features]
+
+    time_span_col_name = "month"
+    period = "M"
+
+    # time_span_col_name = 'quarter'
+    # period = 'Q'
+
+    # time_span_col_name = 'year'
+    # period = 'Y'
+
+    # Step 1: Prepare transactions dataset
+    transactions = transactions_df.copy()
+    transactions[time_span_col_name] = transactions["timestamp"].dt.to_period(period)
+
+    macro_df[time_span_col_name] = macro_df["timestamp"].dt.to_period(period)
+
+    sum_columns = ["mortgage_value"]
+    mean_columns = [
+        col
+        for col in macro_df.columns
+        if col not in sum_columns + ["timestamp", time_span_col_name]
+    ]
+    macro_per_period = macro_df.groupby(macro_df[time_span_col_name]).agg(
+        {
+            **{col: "sum" for col in sum_columns},
+            **{col: "median" for col in mean_columns},
+        }
+    )
+    macro_per_period = macro_df.groupby(macro_df[time_span_col_name]).mean()
+    macro_per_period = macro_per_period.drop(columns=["timestamp"])
+
+    # Step 3: Merge transactions with aggregated macro data
+    return pd.merge(
+        transactions,
+        macro_per_period,
+        how="left",
+        left_on=time_span_col_name,
+        right_on=time_span_col_name,
+    )
+
+
+def drop_weighted_columns(df):
+    columns_to_drop = [col for col in df.columns if col.endswith("_weighted")]
+    return df.drop(columns=columns_to_drop)
+
+
+def drop_cafe_columns(df):
+    columns_to_drop = [col for col in df.columns if col.startswith("cafe_")]
+    return df.drop(columns=columns_to_drop)
+
+
+#  Showed +0.5%
+def fi_experimental(df):
+    # Living space ratio: life_sq / full_sq
+    df["living_space_ratio"] = df["life_sq"] / df["full_sq"]
+
+    # Kitchen to living ratio: kitch_sq / life_sq
+    df["kitchen_to_living_ratio"] = df["kitch_sq"] / df["life_sq"]
+
+    # Floor to max floor ratio: floor / max_floor
+    df["floor_to_max_floor_ratio"] = df["floor"] / df["max_floor"]
+
+    # Rooms per square meter: num_room / full_sq
+    df["rooms_per_sq"] = df["num_room"] / df["full_sq"]
+
+    # Elderly dependents ratio: ekder_all / work_all
+    df["elderly_dependents"] = df["ekder_all"] / df["work_all"]
+
+    # Youth dependents ratio: young_all / work_all
+    df["youth_dependents"] = df["young_all"] / df["work_all"]
+
+    # Green to industrial ratio: green_zone_part / indust_part
+    df["green_to_industrial_ratio"] = df["green_zone_part"] / df["indust_part"]
+
+    # Healthcare to population ratio: hospital_beds_raion / raion_popul
+    df["healthcare_to_population_ratio"] = df["hospital_beds_raion"] / df["raion_popul"]
+
+    # School to population ratio: children_school / raion_popul
+    df["school_to_population_ratio"] = df["children_school"] / df["raion_popul"]
+
+    # Distance to center per square meter: kremlin_km / full_sq
+    # df["distance_to_center_per_sq"] = df["kremlin_km"] / df["full_sq"]
+
+    # Age of building: timestamp.year - build_year
+    df["age_of_building"] = pd.to_datetime(df["timestamp"]).dt.year - df["build_year"]
+
+    # High floor indicator: floor / max_floor > 0.75
+    df["is_high_floor"] = (df["floor"] / df["max_floor"] > 0.75).astype(int)
+
+    # Handle divisions by zero and invalid operations
+    df.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+    return df
 
 
 def create_accessibility_and_adequacy_features(df):
@@ -167,12 +324,21 @@ def aggregate_affordability_accessibility(df):
 
     # Define weights for each distance range
     distance_weights = {
-        "500": 1.5,
-        "1000": 1.2,
-        "1500": 1.0,
-        "2000": 0.8,
-        "3000": 0.6,
-        "5000": 0.5,
+        "500": 6,
+        "1000": 5,
+        "1500": 4,
+        "2000": 3,
+        "3000": 2,
+        "5000": 1,
+    }
+
+    accessibility_distance_weights = {
+        "500": 1,
+        "1000": 1,
+        "1500": 1,
+        "2000": 1,
+        "3000": 1,
+        "5000": 1,
     }
 
     # Identify affordability and accessibility columns
@@ -190,7 +356,10 @@ def aggregate_affordability_accessibility(df):
 
     # Aggregate accessibility
     df["cafe_total_accessibility"] = df[accessibility_columns].dot(
-        [distance_weights[col.split("_")[-1]] for col in accessibility_columns]
+        [
+            accessibility_distance_weights[col.split("_")[-1]]
+            for col in accessibility_columns
+        ]
     )
 
     # Drop individual distance-specific columns
@@ -203,16 +372,16 @@ def process_and_drop_cafe_price_columns(df):
     # Create a copy of the DataFrame to avoid modifying the original
 
     # Define price level weights
-    price_weights = {"500": 1, "1000": 2, "1500": 3, "2500": 4, "4000": 5, "high": 6}
+    price_weights = {"500": 6, "1000": 5, "1500": 4, "2500": 3, "4000": 2, "high": 1}
 
     # Define distance weights
     distance_weights = {
-        "500": 1.5,
-        "1000": 1.2,
-        "1500": 1.0,
-        "2000": 0.8,
-        "3000": 0.6,
-        "5000": 0.5,
+        "500": 6,
+        "1000": 5,
+        "1500": 4,
+        "2000": 3,
+        "3000": 2,
+        "5000": 1,
     }
 
     # Extract unique distance ranges from column names
@@ -357,12 +526,12 @@ def drop_sport_count_columns(df, base_column):
 
 feature_distance_weights = {
     "sport_count_": {
-        "500": 1.49,
-        "1000": 1.26,
-        "1500": 1.35,
-        "2000": 1.29,
-        "3000": 5.00,
-        "5000": 1.41,
+        "500": 1,
+        "1000": 1,
+        "1500": 1,
+        "2000": 1,
+        "3000": 1,
+        "5000": 1,
     },
     "office_count_": {"500": 6, "1000": 5, "1500": 4, "2000": 3, "3000": 2, "5000": 1},
     "trc_count_": {"500": 6, "1000": 5, "1500": 4, "2000": 3, "3000": 2, "5000": 1},

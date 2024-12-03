@@ -5,8 +5,15 @@ import numpy as np
 
 import joblib
 
+from sklearn.cluster import DBSCAN
 from sklearn.model_selection import cross_val_predict
-from sklearn.metrics import mean_squared_error, mean_squared_log_error, r2_score
+from sklearn.metrics import (
+    davies_bouldin_score,
+    mean_squared_error,
+    mean_squared_log_error,
+    r2_score,
+    silhouette_score,
+)
 
 
 # Кластеры для районов
@@ -119,6 +126,26 @@ def measure_performace(model, X_train, y_train, X_test, y_test):
     print(f"Test MSLE: {test_msle}\n")
 
 
+def feature_scores_to_df(feature_columns, model, importance_type="gain"):
+    feature_scores = model.get_booster().get_score(importance_type=importance_type)
+    feature_scores = {
+        k: v / sum(feature_scores.values()) for k, v in feature_scores.items()
+    }
+    # Map 'f0', 'f1', ... keys to actual feature names
+    mapped_scores = {
+        feature_columns[int(key[1:])]: value for key, value in feature_scores.items()
+    }
+
+    # Convert to DataFrame, sort by score, and add rank
+    feature_score_df = pd.DataFrame(
+        list(mapped_scores.items()), columns=["Feature", importance_type]
+    ).sort_values(by=importance_type, ascending=False)
+    feature_score_df.index = range(1, len(feature_score_df) + 1)
+    feature_score_df.index.name = "Rank"
+
+    return feature_score_df
+
+
 def feature_importances_to_df(feature_columns, feature_importances):
     feature_importance_df = pd.DataFrame(
         {"Feature": feature_columns, "Importance": feature_importances}
@@ -126,8 +153,6 @@ def feature_importances_to_df(feature_columns, feature_importances):
 
     feature_importance_df.index = range(1, len(feature_importance_df) + 1)
     feature_importance_df.index.name = "Rank"
-
-    print(feature_importance_df)
 
     return feature_importance_df
 
@@ -162,3 +187,87 @@ def reduce_features(X, all_features, reduced_features):
         f"Reduced dimensionality: {original_shape[1]} → {reduced_shape[1]} (Rows: {reduced_shape[0]})"
     )
     return (X_reduced, reduced_features_ordered)
+
+
+def get_outlies_DBSCAN(X, eps, min_samples, measure_scores=False):
+    dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric="euclidean", n_jobs=-1)
+    labels = dbscan.fit_predict(X)
+    outlier_indices = np.where(labels == -1)[0]
+    print(f"Outliers detected: {len(outlier_indices)}")
+
+    if measure_scores:
+        non_outlier_mask = labels != -1
+        silhouette = silhouette_score(X[non_outlier_mask], labels[non_outlier_mask])
+        davies_bouldin = davies_bouldin_score(
+            X[non_outlier_mask], labels[non_outlier_mask]
+        )
+        print(f"Silhouette Score: {silhouette:.2f}")
+        print(f"Davies-Bouldin Index: {davies_bouldin:.2f}")
+
+    return labels, outlier_indices
+
+
+# silhouette_score
+# 1.0 (Perfect Score): Indicates clusters are perfectly separated and all points are close to their cluster center. This is rare in real-world datasets.
+# 0.7–1.0 (Excellent): Very well-defined clusters with strong separation.
+# 0.5–0.7 (Good): Reasonably well-defined clusters with some overlap or noise.
+# 0.25–0.5 (Moderate): Clusters may overlap, or the dataset has noise or complex shapes.
+# 0.0–0.25 (Weak): Poor clustering; clusters are indistinct or overlap heavily.
+# < 0.0 (Negative): Indicates that many points are closer to a different cluster than their assigned cluster. This suggests poor clustering or incorrect parameter choices.
+
+
+# davies_bouldin_score
+# < 0.5: Excellent clustering with compact and well-separated clusters.
+# 0.5–1.0: Decent clustering; may include some overlap or less compact clusters.
+# > 1.0: Poor clustering, often indicating significant overlap between clusters or very dispersed clusters.
+def search_params_DBSCAN(X, eps_values, min_samples_values):
+    # Track the best parameters and scores
+    best_eps = None
+    best_min_samples = None
+    best_silhouette_score = -1
+    best_davies_bouldin_score = float("inf")  # Lower is better for Davies-Bouldin
+    results = []  # Store results for analysis
+
+    # Grid search for the best combination of eps and min_samples
+    for eps in eps_values:
+        for min_samples in min_samples_values:
+            dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric="euclidean")
+            labels = dbscan.fit_predict(X)
+
+            # Count outliers
+            n_outliers = np.sum(labels == -1)
+
+            # Exclude outliers for Silhouette Score and Davies-Bouldin Index
+            if len(set(labels[labels != -1])) > 1:  # Avoid invalid clustering scores
+                silhouette = silhouette_score(X[labels != -1], labels[labels != -1])
+                davies_bouldin = davies_bouldin_score(
+                    X[labels != -1], labels[labels != -1]
+                )
+            else:
+                silhouette = -1  # Invalid clustering
+                davies_bouldin = float("inf")  # Invalid clustering
+
+            # Track results
+            results.append(
+                {
+                    "eps": eps,
+                    "min_samples": min_samples,
+                    "silhouette_score": silhouette,
+                    "davies_bouldin_score": davies_bouldin,
+                    "n_outliers": n_outliers,
+                }
+            )
+
+            # Update best parameters based on Silhouette Score
+            if silhouette > best_silhouette_score:
+                best_silhouette_score = silhouette
+                best_eps = eps
+                best_min_samples = min_samples
+                best_davies_bouldin_score = davies_bouldin
+
+    # Print the best combination
+    print(f"Best Silhouette Score: {best_silhouette_score:.2f}")
+    print(f"Best Davies-Bouldin Index: {best_davies_bouldin_score:.2f}")
+    print(f"Best eps: {best_eps}, Best min_samples: {best_min_samples}")
+
+    return pd.DataFrame(results)
